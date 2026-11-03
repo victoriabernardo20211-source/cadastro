@@ -1,4 +1,6 @@
 {
+  "buildCommand": "echo build ok",
+  "outputDirectory": "public",
   "functions": {
     "api/**/*.js": {
       "maxDuration": 15
