@@ -2,7 +2,6 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { cpf } = req.query;
@@ -12,28 +11,36 @@ module.exports = async (req, res) => {
   if (cpfLimpo.length !== 11) return res.status(400).json({ erro: 'CPF inválido.' });
 
   const SNOP_KEY = process.env.SNOP_KEY;
-  if (!SNOP_KEY) return res.status(500).json({ erro: 'Chave da API não configurada.' });
+  if (!SNOP_KEY) return res.status(500).json({ erro: 'SNOP_KEY não configurada.' });
 
   try {
     const r = await fetch(
       `https://snoopintelligence.cloud/api/v2/generic/cpf?cpf=${cpfLimpo}`,
-      { headers: { Authorization: `Bearer ${SNOP_KEY}` } }
+      {
+        headers: {
+          Authorization: `Bearer ${SNOP_KEY}`,
+          Accept: 'application/json'
+        }
+      }
     );
 
-    if (!r.ok) {
-      const txt = await r.text();
-      return res.status(r.status).json({ erro: 'Erro na consulta.', detalhe: txt });
-    }
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = {}; }
 
-    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json({ erro: 'Erro na consulta SNOP.', detalhe: text.slice(0, 200) });
 
-    // normaliza os campos mais comuns retornados por APIs de CPF
-    const nome     = data.nome     || data.name        || data.NOME     || '—';
-    const nascimento = data.nascimento || data.data_nascimento || data.NASCIMENTO || data.birthdate || '—';
-    const mae      = data.mae      || data.nome_mae    || data.MAE      || data.mother_name || '—';
+    // A API SNOP pode retornar os dados em diferentes níveis
+    const d = data?.data || data?.resultado || data?.response || data || {};
 
-    res.json({ ok: true, nome, nascimento, mae, raw: data });
+    const nome       = d.nome       || d.name         || d.NOME        || d.NM_PESSOA    || '—';
+    const nascimento = d.nascimento || d.data_nasc     || d.DT_NASC     || d.birthdate    ||
+                       d.dt_nascimento || d.DATA_NASCIMENTO               || '—';
+    const mae        = d.mae        || d.nome_mae      || d.NM_MAE      || d.mother       ||
+                       d.NOME_MAE   || d.nm_mae                          || '—';
+
+    res.json({ ok: true, nome, nascimento, mae });
   } catch (err) {
-    res.status(500).json({ erro: err.message || 'Erro interno.' });
+    res.status(500).json({ erro: err.message });
   }
 };
