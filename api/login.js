@@ -1,6 +1,6 @@
-const { loadDB, saveDB, hash } = require('./_db');
+const { dbGet, dbInsert, hash } = require('./_db');
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,14 +14,14 @@ module.exports = (req, res) => {
     return res.status(400).json({ erro: 'Informe CPF e senha.' });
 
   const cpfLimpo = cpf.replace(/\D/g, '');
-  const db = loadDB();
-  const u  = db.usuarios.find(u => u.cpf === cpfLimpo && u.senha === hash(senha));
 
-  if (!u)
-    return res.status(401).json({ erro: 'CPF ou senha incorretos.' });
+  try {
+    const u = await dbGet('usuarios', { cpf: cpfLimpo });
+    if (!u || u.senha !== hash(senha))
+      return res.status(401).json({ erro: 'CPF ou senha incorretos.' });
 
-  db.acessos.unshift({ id: Date.now(), usuario_id: u.id, cpf: cpfLimpo, tipo: 'login', feito_em: new Date().toISOString() });
-  saveDB(db);
-
-  res.json({ ok: true, mensagem: 'Login realizado!', id: u.id });
+    res.json({ ok: true, mensagem: 'Login realizado!', id: u.id });
+  } catch (err) {
+    res.status(500).json({ erro: err.message || 'Erro interno.' });
+  }
 };

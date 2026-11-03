@@ -570,7 +570,7 @@
       // fallback local
       const cpfLimpo = cpf.replace(/\D/g, '');
       if (cpfLimpo.length !== 11) return showError('CPF inválido.');
-      if (senha.length < 6)       return showError('Senha deve ter pelo menos 6 dígitos.');
+      if (!/^\d{8}$/.test(senha))  return showError('Senha deve ter exatamente 8 dígitos numéricos.');
       if (!/^\d{4}$/.test(pin))   return showError('PIN deve ter 4 dígitos numéricos.');
       const usuarios = getUsuarios();
       if (usuarios.find(u => u.cpf === cpfLimpo)) return showError('CPF já cadastrado.');
