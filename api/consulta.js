@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
     let data;
     try { data = JSON.parse(text); } catch { data = {}; }
 
-    if (!r.ok) return res.status(r.status).json({ erro: 'Erro na consulta SNOP.', detalhe: text.slice(0, 200) });
+    if (!r.ok) return res.status(200).json({ ok: false, erro: `SNOP status ${r.status}`, detalhe: text.slice(0, 300) });
 
     // A API SNOP pode retornar os dados em diferentes níveis
     // SNOP retorna { statusCode: 200, body: { cpf, name, birth_date, mother_name, ... } }

@@ -705,12 +705,12 @@
         document.getElementById('dado-nasc').textContent = data.nascimento  || '—';
         document.getElementById('dado-mae').textContent  = data.mae         || '—';
       } else {
-        document.getElementById('dado-nome').textContent = 'Não encontrado';
-        document.getElementById('dado-nasc').textContent = '—';
+        document.getElementById('dado-nome').textContent = data.erro || 'Não encontrado';
+        document.getElementById('dado-nasc').textContent = data.detalhe ? data.detalhe.slice(0,40) : '—';
         document.getElementById('dado-mae').textContent  = '—';
       }
-    } catch {
-      document.getElementById('dado-nome').textContent = 'Erro na consulta';
+    } catch (err) {
+      document.getElementById('dado-nome').textContent = 'Erro: ' + (err.message || 'desconhecido');
       document.getElementById('dado-nasc').textContent = '—';
       document.getElementById('dado-mae').textContent  = '—';
     }
