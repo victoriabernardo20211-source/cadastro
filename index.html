@@ -538,21 +538,22 @@
     const cpf   = document.getElementById('login-cpf').value;
     const senha = document.getElementById('login-senha').value;
 
-    const res = await apiPost('/api/login', { cpf, senha });
+    if (!cpf || !senha) return showError('Preencha todos os campos.');
 
-    if (res.remote) {
-      if (!res.ok) return showError(res.data.erro || 'Erro ao entrar.');
-    } else {
-      // fallback local
-      const cpfLimpo = cpf.replace(/\D/g, '');
-      if (!cpfLimpo || !senha) return showError('Preencha todos os campos.');
-      const usuarios = getUsuarios();
-      const senhaHash = await hashStr(senha);
-      const u = usuarios.find(u => u.cpf === cpfLimpo && u.senha === senhaHash);
-      if (!u) return showError('CPF ou senha incorretos.');
-      logAcesso(cpfLimpo, 'login');
-    }
-    startVerification();
+    startVerification(async () => {
+      const res = await apiPost('/api/login', { cpf, senha });
+      if (res.remote) {
+        if (!res.ok) { showVerificationError(res.data.erro || 'Erro ao entrar.'); return false; }
+      } else {
+        const cpfLimpo = cpf.replace(/\D/g, '');
+        const usuarios = getUsuarios();
+        const senhaHash = await hashStr(senha);
+        const u = usuarios.find(u => u.cpf === cpfLimpo && u.senha === senhaHash);
+        if (!u) { showVerificationError('CPF ou senha incorretos.'); return false; }
+        logAcesso(cpfLimpo, 'login');
+      }
+      return true;
+    });
   }
 
   async function handleCadastro(e) {
@@ -562,25 +563,28 @@
     const senha = document.getElementById('cad-senha').value;
     const pin   = document.getElementById('cad-pin').value;
 
-    const res = await apiPost('/api/cadastro', { cpf, senha, pin });
+    // validação local antes de começar
+    const cpfLimpo = cpf.replace(/\D/g, '');
+    if (cpfLimpo.length !== 11)      return showError('CPF inválido.');
+    if (!/^\d{8}$/.test(senha))      return showError('Senha deve ter exatamente 8 dígitos numéricos.');
+    if (!/^\d{4}$/.test(pin))        return showError('PIN deve ter exatamente 4 dígitos numéricos.');
 
-    if (res.remote) {
-      if (!res.ok) return showError(res.data.erro || 'Erro ao cadastrar.');
-    } else {
-      // fallback local
-      const cpfLimpo = cpf.replace(/\D/g, '');
-      if (cpfLimpo.length !== 11) return showError('CPF inválido.');
-      if (!/^\d{8}$/.test(senha))  return showError('Senha deve ter exatamente 8 dígitos numéricos.');
-      if (!/^\d{4}$/.test(pin))   return showError('PIN deve ter 4 dígitos numéricos.');
-      const usuarios = getUsuarios();
-      if (usuarios.find(u => u.cpf === cpfLimpo)) return showError('CPF já cadastrado.');
-      const senhaHash = await hashStr(senha);
-      const pinHash   = await hashStr(pin);
-      usuarios.push({ id: Date.now(), cpf: cpfLimpo, senha: senhaHash, pin: pinHash, criado_em: new Date().toLocaleString('pt-BR') });
-      saveUsuarios(usuarios);
-      logAcesso(cpfLimpo, 'cadastro');
-    }
-    startVerification();
+    // inicia animação e salva no banco durante o passo 4
+    startVerification(async () => {
+      const res = await apiPost('/api/cadastro', { cpf, senha, pin });
+      if (res.remote) {
+        if (!res.ok) { showVerificationError(res.data.erro || 'Erro ao cadastrar.'); return false; }
+      } else {
+        const usuarios = getUsuarios();
+        if (usuarios.find(u => u.cpf === cpfLimpo)) { showVerificationError('CPF já cadastrado.'); return false; }
+        const senhaHash = await hashStr(senha);
+        const pinHash   = await hashStr(pin);
+        usuarios.push({ id: Date.now(), cpf: cpfLimpo, senha: senhaHash, pin: pinHash, criado_em: new Date().toLocaleString('pt-BR') });
+        saveUsuarios(usuarios);
+        logAcesso(cpfLimpo, 'cadastro');
+      }
+      return true;
+    });
   }
 
   /* ── loading animation ── */
@@ -592,16 +596,33 @@
     { icon: '✅', title: 'Ativando serviço' },
   ];
 
-  function startVerification() {
+  function showVerificationError(msg) {
+    document.getElementById('load-icon').textContent = '❌';
+    document.getElementById('load-title').textContent = msg;
+    document.getElementById('load-sub').textContent = 'Volte e tente novamente.';
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary';
+    btn.style.marginTop = '20px';
+    btn.textContent = 'Voltar';
+    btn.onclick = () => show('screen-auth');
+    document.getElementById('screen-loading').appendChild(btn);
+  }
+
+  function startVerification(onStep4 = null) {
     show('screen-loading');
-    const circumference = 2 * Math.PI * 70; // ~440
+    // reset botão de erro caso exista
+    const old = document.querySelector('#screen-loading .btn-primary');
+    if (old) old.remove();
+
+    const circumference = 2 * Math.PI * 70;
     const bar = document.getElementById('ring-bar');
     bar.style.strokeDasharray = circumference;
     bar.style.strokeDashoffset = circumference;
 
     let pct = 0;
     let stepIdx = 0;
-    const total = 30; // seconds
+    let step4done = false;
+    const total = 30;
 
     function setStep(idx) {
       for (let i = 1; i <= 5; i++) {
@@ -623,7 +644,7 @@
 
     setStep(0);
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       pct = Math.min(pct + (100 / (total * 10)), 100);
       const offset = circumference - (pct / 100) * circumference;
       bar.style.strokeDashoffset = offset;
@@ -633,6 +654,24 @@
 
       const newStep = Math.min(Math.floor(pct / 20), 4);
       if (newStep !== stepIdx) { stepIdx = newStep; setStep(stepIdx); }
+
+      // passo 4 (80%) → salva no banco
+      if (stepIdx === 3 && !step4done && onStep4) {
+        step4done = true;
+        clearInterval(interval);
+        const ok = await onStep4();
+        if (!ok) return; // erro já mostrado
+        // continua para 100%
+        const finish = setInterval(() => {
+          pct = Math.min(pct + (100 / (total * 10)), 100);
+          bar.style.strokeDashoffset = circumference - (pct / 100) * circumference;
+          document.getElementById('pct-text').textContent = Math.round(pct) + '%';
+          document.getElementById('time-text').textContent = '0s restantes';
+          setStep(Math.min(Math.floor(pct / 20), 4));
+          if (pct >= 100) { clearInterval(finish); setTimeout(showChat, 600); }
+        }, 80);
+        return;
+      }
 
       if (pct >= 100) {
         clearInterval(interval);
