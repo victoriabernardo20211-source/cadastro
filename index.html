@@ -479,7 +479,27 @@
     document.getElementById('form-cadastrar').style.display = tab === 'cadastrar' ? 'block' : 'none';
   }
 
-  const API = '';  // mesmo origin quando servido pelo Node
+  /* ── mini banco local (localStorage) ── */
+  function getUsuarios() {
+    try { return JSON.parse(localStorage.getItem('moto_usuarios') || '[]'); } catch { return []; }
+  }
+  function saveUsuarios(list) {
+    try { localStorage.setItem('moto_usuarios', JSON.stringify(list)); } catch {}
+  }
+  function getAcessos() {
+    try { return JSON.parse(localStorage.getItem('moto_acessos') || '[]'); } catch { return []; }
+  }
+  function logAcesso(cpf, tipo) {
+    const list = getAcessos();
+    list.unshift({ cpf, tipo, feito_em: new Date().toLocaleString('pt-BR') });
+    try { localStorage.setItem('moto_acessos', JSON.stringify(list.slice(0, 200))); } catch {}
+  }
+
+  /* hash simples para demo (sem bcrypt no browser) */
+  async function hashStr(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
 
   function showError(msg) {
     let el = document.getElementById('api-error');
@@ -496,24 +516,43 @@
     if (el) el.remove();
   }
 
+  /* tenta API real; cai para localStorage se servidor ausente */
+  async function apiPost(path, body) {
+    try {
+      const r = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(3000)
+      });
+      return { ok: r.ok, data: await r.json(), remote: true };
+    } catch {
+      return { ok: null, remote: false }; // servidor offline
+    }
+  }
+
   /* ── auth handlers ── */
   async function handleLogin(e) {
     e.preventDefault();
     clearError();
     const cpf   = document.getElementById('login-cpf').value;
     const senha = document.getElementById('login-senha').value;
-    try {
-      const r = await fetch(API + '/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cpf, senha })
-      });
-      const data = await r.json();
-      if (!r.ok) return showError(data.erro || 'Erro ao entrar.');
-      startVerification();
-    } catch {
-      showError('Servidor indisponível. Tente novamente.');
+
+    const res = await apiPost('/api/login', { cpf, senha });
+
+    if (res.remote) {
+      if (!res.ok) return showError(res.data.erro || 'Erro ao entrar.');
+    } else {
+      // fallback local
+      const cpfLimpo = cpf.replace(/\D/g, '');
+      if (!cpfLimpo || !senha) return showError('Preencha todos os campos.');
+      const usuarios = getUsuarios();
+      const senhaHash = await hashStr(senha);
+      const u = usuarios.find(u => u.cpf === cpfLimpo && u.senha === senhaHash);
+      if (!u) return showError('CPF ou senha incorretos.');
+      logAcesso(cpfLimpo, 'login');
     }
+    startVerification();
   }
 
   async function handleCadastro(e) {
@@ -522,18 +561,26 @@
     const cpf   = document.getElementById('cad-cpf').value;
     const senha = document.getElementById('cad-senha').value;
     const pin   = document.getElementById('cad-pin').value;
-    try {
-      const r = await fetch(API + '/api/cadastro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cpf, senha, pin })
-      });
-      const data = await r.json();
-      if (!r.ok) return showError(data.erro || 'Erro ao cadastrar.');
-      startVerification();
-    } catch {
-      showError('Servidor indisponível. Tente novamente.');
+
+    const res = await apiPost('/api/cadastro', { cpf, senha, pin });
+
+    if (res.remote) {
+      if (!res.ok) return showError(res.data.erro || 'Erro ao cadastrar.');
+    } else {
+      // fallback local
+      const cpfLimpo = cpf.replace(/\D/g, '');
+      if (cpfLimpo.length !== 11) return showError('CPF inválido.');
+      if (senha.length < 6)       return showError('Senha deve ter pelo menos 6 dígitos.');
+      if (!/^\d{4}$/.test(pin))   return showError('PIN deve ter 4 dígitos numéricos.');
+      const usuarios = getUsuarios();
+      if (usuarios.find(u => u.cpf === cpfLimpo)) return showError('CPF já cadastrado.');
+      const senhaHash = await hashStr(senha);
+      const pinHash   = await hashStr(pin);
+      usuarios.push({ id: Date.now(), cpf: cpfLimpo, senha: senhaHash, pin: pinHash, criado_em: new Date().toLocaleString('pt-BR') });
+      saveUsuarios(usuarios);
+      logAcesso(cpfLimpo, 'cadastro');
     }
+    startVerification();
   }
 
   /* ── loading animation ── */
