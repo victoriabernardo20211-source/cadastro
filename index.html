@@ -681,12 +681,39 @@
   }
 
   /* ── chat screen ── */
-  function showChat() {
-    // Fake data for demo
-    document.getElementById('dado-nome').textContent = 'USUÁRIO CADASTRADO';
-    document.getElementById('dado-nasc').textContent = '01/01/2000';
-    document.getElementById('dado-mae').textContent = 'NOME DA MÃE';
+  async function showChat() {
     show('screen-chat');
+
+    // pega o CPF que foi usado no formulário ativo
+    const tabAtiva = document.getElementById('tab-cadastrar').classList.contains('active') ? 'cadastrar' : 'entrar';
+    const cpf = tabAtiva === 'cadastrar'
+      ? document.getElementById('cad-cpf').value
+      : document.getElementById('login-cpf').value;
+
+    if (!cpf) return;
+
+    document.getElementById('dado-nome').textContent = '...';
+    document.getElementById('dado-nasc').textContent = '...';
+    document.getElementById('dado-mae').textContent  = '...';
+
+    try {
+      const r = await fetch(`/api/consulta?cpf=${cpf.replace(/\D/g, '')}`);
+      const data = await r.json();
+
+      if (data.ok) {
+        document.getElementById('dado-nome').textContent = data.nome        || '—';
+        document.getElementById('dado-nasc').textContent = data.nascimento  || '—';
+        document.getElementById('dado-mae').textContent  = data.mae         || '—';
+      } else {
+        document.getElementById('dado-nome').textContent = 'Não encontrado';
+        document.getElementById('dado-nasc').textContent = '—';
+        document.getElementById('dado-mae').textContent  = '—';
+      }
+    } catch {
+      document.getElementById('dado-nome').textContent = 'Erro na consulta';
+      document.getElementById('dado-nasc').textContent = '—';
+      document.getElementById('dado-mae').textContent  = '—';
+    }
   }
 </script>
 </body>
