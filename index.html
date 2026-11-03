@@ -479,15 +479,61 @@
     document.getElementById('form-cadastrar').style.display = tab === 'cadastrar' ? 'block' : 'none';
   }
 
-  /* ── auth handlers ── */
-  function handleLogin(e) {
-    e.preventDefault();
-    startVerification();
+  const API = '';  // mesmo origin quando servido pelo Node
+
+  function showError(msg) {
+    let el = document.getElementById('api-error');
+    if (!el) {
+      el = document.createElement('p');
+      el.id = 'api-error';
+      el.style.cssText = 'color:#f55;font-size:13px;text-align:center;margin-top:12px;';
+    }
+    el.textContent = msg;
+    document.querySelector('.card').appendChild(el);
+  }
+  function clearError() {
+    const el = document.getElementById('api-error');
+    if (el) el.remove();
   }
 
-  function handleCadastro(e) {
+  /* ── auth handlers ── */
+  async function handleLogin(e) {
     e.preventDefault();
-    startVerification();
+    clearError();
+    const cpf   = document.getElementById('login-cpf').value;
+    const senha = document.getElementById('login-senha').value;
+    try {
+      const r = await fetch(API + '/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf, senha })
+      });
+      const data = await r.json();
+      if (!r.ok) return showError(data.erro || 'Erro ao entrar.');
+      startVerification();
+    } catch {
+      showError('Servidor indisponível. Tente novamente.');
+    }
+  }
+
+  async function handleCadastro(e) {
+    e.preventDefault();
+    clearError();
+    const cpf   = document.getElementById('cad-cpf').value;
+    const senha = document.getElementById('cad-senha').value;
+    const pin   = document.getElementById('cad-pin').value;
+    try {
+      const r = await fetch(API + '/api/cadastro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf, senha, pin })
+      });
+      const data = await r.json();
+      if (!r.ok) return showError(data.erro || 'Erro ao cadastrar.');
+      startVerification();
+    } catch {
+      showError('Servidor indisponível. Tente novamente.');
+    }
   }
 
   /* ── loading animation ── */
