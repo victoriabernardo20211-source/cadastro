@@ -1,4 +1,4 @@
-const { getSQL, hash } = require('./_db');
+const { query, hash } = require('./_db');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,10 +13,8 @@ module.exports = async (req, res) => {
   const cpfLimpo = cpf.replace(/\D/g, '');
 
   try {
-    const sql = getSQL();
-    const rows = await sql`SELECT * FROM usuarios WHERE cpf = ${cpfLimpo}`;
+    const rows = await query('SELECT * FROM usuarios WHERE cpf = $1', [cpfLimpo]);
     const u = rows[0];
-
     if (!u || u.senha !== hash(senha))
       return res.status(401).json({ erro: 'CPF ou senha incorretos.' });
 

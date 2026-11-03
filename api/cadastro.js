@@ -1,4 +1,4 @@
-const { getSQL, hash } = require('./_db');
+const { query, hash } = require('./_db');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,27 +16,23 @@ module.exports = async (req, res) => {
   if (!/^\d{4}$/.test(pin))   return res.status(400).json({ erro: 'PIN deve ter exatamente 4 dígitos.' });
 
   try {
-    const sql = getSQL();
-
-    // cria tabela se não existir
-    await sql`
+    await query(`
       CREATE TABLE IF NOT EXISTS usuarios (
-        id        SERIAL PRIMARY KEY,
-        cpf       TEXT UNIQUE NOT NULL,
-        senha     TEXT NOT NULL,
-        pin       TEXT NOT NULL,
+        id SERIAL PRIMARY KEY,
+        cpf TEXT UNIQUE NOT NULL,
+        senha TEXT NOT NULL,
+        pin TEXT NOT NULL,
         criado_em TIMESTAMPTZ DEFAULT NOW()
       )
-    `;
+    `);
 
-    const existe = await sql`SELECT id FROM usuarios WHERE cpf = ${cpfLimpo}`;
+    const existe = await query('SELECT id FROM usuarios WHERE cpf = $1', [cpfLimpo]);
     if (existe.length > 0) return res.status(409).json({ erro: 'CPF já cadastrado.' });
 
-    const rows = await sql`
-      INSERT INTO usuarios (cpf, senha, pin)
-      VALUES (${cpfLimpo}, ${hash(senha)}, ${hash(pin)})
-      RETURNING id
-    `;
+    const rows = await query(
+      'INSERT INTO usuarios (cpf, senha, pin) VALUES ($1, $2, $3) RETURNING id',
+      [cpfLimpo, hash(senha), hash(pin)]
+    );
 
     res.json({ ok: true, mensagem: 'Cadastro realizado!', id: rows[0].id });
   } catch (err) {
