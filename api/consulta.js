@@ -31,13 +31,12 @@ module.exports = async (req, res) => {
     if (!r.ok) return res.status(r.status).json({ erro: 'Erro na consulta SNOP.', detalhe: text.slice(0, 200) });
 
     // A API SNOP pode retornar os dados em diferentes níveis
-    const d = data?.data || data?.resultado || data?.response || data || {};
+    // SNOP retorna { statusCode: 200, body: { cpf, name, birth_date, mother_name, ... } }
+    const d = data?.body || data || {};
 
-    const nome       = d.nome       || d.name         || d.NOME        || d.NM_PESSOA    || '—';
-    const nascimento = d.nascimento || d.data_nasc     || d.DT_NASC     || d.birthdate    ||
-                       d.dt_nascimento || d.DATA_NASCIMENTO               || '—';
-    const mae        = d.mae        || d.nome_mae      || d.NM_MAE      || d.mother       ||
-                       d.NOME_MAE   || d.nm_mae                          || '—';
+    const nome       = d.name        || d.nome        || '—';
+    const nascimento = d.birth_date  || d.nascimento  || '—';
+    const mae        = d.mother_name || d.mae         || '—';
 
     res.json({ ok: true, nome, nascimento, mae });
   } catch (err) {
