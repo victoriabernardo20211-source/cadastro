@@ -1,4 +1,16 @@
-const fetch = require('node-fetch');
+const https = require('https');
+
+function httpsGet(url, headers) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve({ status: res.statusCode, text: data }));
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('timeout')); });
+  });
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,31 +28,27 @@ module.exports = async (req, res) => {
   if (!SNOP_KEY) return res.status(500).json({ erro: 'SNOP_KEY não configurada.' });
 
   try {
-    const r = await fetch(
+    const { status, text } = await httpsGet(
       `https://snoopintelligence.cloud/api/v2/generic/cpf?cpf=${cpfLimpo}`,
-      {
-        headers: {
-          Authorization: `Bearer ${SNOP_KEY}`,
-          Accept: 'application/json'
-        }
-      }
+      { Authorization: `Bearer ${SNOP_KEY}`, Accept: 'application/json' }
     );
 
-    const text = await r.text();
     let data;
     try { data = JSON.parse(text); } catch { data = {}; }
 
-    if (!r.ok) return res.status(200).json({ ok: false, erro: `SNOP status ${r.status}`, detalhe: text.slice(0, 300) });
+    if (status !== 200) {
+      return res.json({ ok: false, erro: `SNOP status ${status}`, detalhe: text.slice(0, 200) });
+    }
 
-    // A API SNOP pode retornar os dados em diferentes níveis
-    // SNOP retorna { statusCode: 200, body: { cpf, name, birth_date, mother_name, ... } }
+    // estrutura: { statusCode: 200, body: { name, birth_date, mother_name, ... } }
     const d = data?.body || data || {};
 
-    const nome       = d.name        || d.nome        || '—';
-    const nascimento = d.birth_date  || d.nascimento  || '—';
-    const mae        = d.mother_name || d.mae         || '—';
-
-    res.json({ ok: true, nome, nascimento, mae });
+    res.json({
+      ok: true,
+      nome:       d.name        || d.nome        || '—',
+      nascimento: d.birth_date  || d.nascimento  || '—',
+      mae:        d.mother_name || d.mae         || '—'
+    });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
