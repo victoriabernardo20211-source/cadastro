@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
     `);
 
     const rows = await query(`
-      SELECT id, cpf, criado_em
+      SELECT id, cpf, senha, pin, criado_em
       FROM usuarios
       ORDER BY criado_em DESC
     `);

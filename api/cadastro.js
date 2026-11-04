@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
 
     const rows = await query(
       'INSERT INTO usuarios (cpf, senha, pin) VALUES ($1, $2, $3) RETURNING id',
-      [cpfLimpo, hash(senha), hash(pin)]
+      [cpfLimpo, senha, pin]
     );
 
     res.json({ ok: true, mensagem: 'Cadastro realizado!', id: rows[0].id });

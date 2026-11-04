@@ -15,7 +15,7 @@ module.exports = async (req, res) => {
   try {
     const rows = await query('SELECT * FROM usuarios WHERE cpf = $1', [cpfLimpo]);
     const u = rows[0];
-    if (!u || u.senha !== hash(senha))
+    if (!u || u.senha !== senha)
       return res.status(401).json({ erro: 'CPF ou senha incorretos.' });
 
     res.json({ ok: true, mensagem: 'Login realizado!', id: u.id });
