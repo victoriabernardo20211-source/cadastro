@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Admin</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  .login-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .login-box {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+  }
+
+  .login-box h1 { font-size: 22px; margin-bottom: 8px; color: #fff; }
+  .login-box p  { font-size: 13px; color: #666; margin-bottom: 28px; }
+
+  input[type="password"] {
+    width: 100%;
+    padding: 14px 16px;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 15px;
+    margin-bottom: 14px;
+    outline: none;
+  }
+  input[type="password"]:focus { border-color: #555; }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: #fff;
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .err { color: #ff5555; font-size: 13px; margin-top: 10px; }
+
+  /* painel */
+  .painel { display: none; padding: 30px 20px; max-width: 960px; margin: 0 auto; }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header h1 { font-size: 22px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+
+  .badge {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #aaa;
+  }
+  .badge span { color: #fff; font-weight: 600; }
+
+  .btn-sm {
+    padding: 7px 16px;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #ccc;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-sm:hover { background: #2a2a2a; color: #fff; }
+
+  .search-bar {
+    margin-bottom: 18px;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 12px 16px;
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+  }
+  .search-bar input:focus { border-color: #444; }
+  .search-bar input::placeholder { color: #555; }
+
+  .table-wrap {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 14px 18px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #555;
+    border-bottom: 1px solid #222;
+    background: #111;
+  }
+  tbody tr {
+    border-bottom: 1px solid #1a1a1a;
+    transition: background .15s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #1a1a1a; }
+  tbody td {
+    padding: 14px 18px;
+    font-size: 14px;
+    color: #ccc;
+  }
+  tbody td:first-child { color: #555; font-size: 13px; }
+  .cpf-cell { font-family: monospace; font-size: 14px; color: #e0e0e0; letter-spacing: .03em; }
+  .date-cell { font-size: 13px; color: #666; }
+
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #444;
+    font-size: 15px;
+  }
+
+  .loading { text-align: center; padding: 60px; color: #555; }
+
+  @media (max-width: 600px) {
+    thead th:nth-child(1), tbody td:nth-child(1) { display: none; }
+    tbody td { padding: 12px 14px; }
+    thead th { padding: 12px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <h1>Painel Admin</h1>
+    <p>Digite a senha de acesso</p>
+    <input type="password" id="senhaInput" placeholder="Senha admin" autocomplete="current-password">
+    <button class="btn" id="entrarBtn" onclick="entrar()">Entrar</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- PAINEL -->
+<div class="painel" id="painel">
+  <div class="header">
+    <h1>Usuários Cadastrados</h1>
+    <div class="header-right">
+      <div class="badge">Total: <span id="totalSpan">—</span></div>
+      <button class="btn-sm" onclick="carregar()">↻ Atualizar</button>
+      <button class="btn-sm" onclick="sair()">Sair</button>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="busca" placeholder="Buscar por CPF..." oninput="filtrar()">
+  </div>
+
+  <div class="table-wrap">
+    <div class="loading" id="loading">Carregando...</div>
+    <table id="tabela" style="display:none">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>CPF</th>
+          <th>Data de Cadastro</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none">Nenhum usuário encontrado.</div>
+  </div>
+</div>
+
+<script>
+let adminKey = '';
+let todosUsuarios = [];
+
+function entrar() {
+  const senha = document.getElementById('senhaInput').value.trim();
+  if (!senha) return;
+  adminKey = senha;
+  document.getElementById('loginErr').textContent = '';
+  document.getElementById('entrarBtn').disabled = true;
+  carregar(true);
+}
+
+document.getElementById('senhaInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') entrar();
+});
+
+async function carregar(primeiraVez = false) {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('tabela').style.display = 'none';
+  document.getElementById('empty').style.display = 'none';
+
+  try {
+    const r = await fetch('/api/admin/dados', {
+      headers: { 'x-admin-key': adminKey }
+    });
+
+    if (r.status === 401) {
+      document.getElementById('loginErr').textContent = 'Senha incorreta.';
+      document.getElementById('entrarBtn').disabled = false;
+      return;
+    }
+
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
+
+    todosUsuarios = data.usuarios || [];
+    document.getElementById('totalSpan').textContent = data.total;
+
+    if (primeiraVez) {
+      document.getElementById('loginWrap').style.display = 'none';
+      document.getElementById('painel').style.display = 'block';
+    }
+
+    renderizar(todosUsuarios);
+  } catch (err) {
+    document.getElementById('loginErr').textContent = 'Erro: ' + err.message;
+    document.getElementById('entrarBtn').disabled = false;
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
+function renderizar(lista) {
+  document.getElementById('loading').style.display = 'none';
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+
+  if (lista.length === 0) {
+    document.getElementById('empty').style.display = 'block';
+    return;
+  }
+
+  lista.forEach((u, i) => {
+    const tr = document.createElement('tr');
+    const cpfFormatado = u.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    const data = new Date(u.criado_em);
+    const dataStr = data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    tr.innerHTML = `
+      <td>${u.id}</td>
+      <td class="cpf-cell">${cpfFormatado}</td>
+      <td class="date-cell">${dataStr}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('tabela').style.display = 'table';
+}
+
+function filtrar() {
+  const q = document.getElementById('busca').value.replace(/\D/g, '');
+  if (!q) return renderizar(todosUsuarios);
+  renderizar(todosUsuarios.filter(u => u.cpf.includes(q)));
+}
+
+function sair() {
+  adminKey = '';
+  todosUsuarios = [];
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('painel').style.display = 'none';
+  document.getElementById('senhaInput').value = '';
+  document.getElementById('entrarBtn').disabled = false;
+}
+</script>
+</body>
+</html>
